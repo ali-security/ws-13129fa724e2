@@ -662,7 +662,14 @@ describe('WebSocketServer', () => {
       });
     });
 
-    it('fails if the Upgrade header field value cannot be read', (done) => {
+    it('fails if the Upgrade header cannot be read', function (done) {
+      //
+      // In Node.js versions >= 22.23.2 < 23.0.0, >= 24.18.1 < 25.0.0, and >=
+      // 26.5.1, the HTTP server rejects the request before emitting the
+      // `'upgrade'` event. See https://github.com/nodejs/node/commit/064d339f.
+      //
+      if (process.versions.modules >= 127) return this.skip();
+
       const server = http.createServer();
       const wss = new WebSocket.Server({ noServer: true });
 
@@ -687,15 +694,6 @@ describe('WebSocketServer', () => {
         });
 
         req.on('response', (res) => {
-          // Newer Node.js releases (22.x on macOS/Windows) reject the request
-          // themselves with 431 once `server.maxHeadersCount` is exceeded, so
-          // the 'upgrade' event is never emitted.
-          if (res.statusCode === 431) {
-            res.resume();
-            server.close(done);
-            return;
-          }
-
           assert.strictEqual(res.statusCode, 400);
 
           const chunks = [];
