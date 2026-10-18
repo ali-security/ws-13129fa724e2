@@ -678,6 +678,15 @@ describe('WebSocketServer', () => {
         });
 
         req.on('response', (res) => {
+          // Newer Node.js releases (22.x on macOS/Windows) reject the request
+          // themselves with 431 once `server.maxHeadersCount` is exceeded, so
+          // the 'upgrade' event is never emitted.
+          if (res.statusCode === 431) {
+            res.resume();
+            server.close(done);
+            return;
+          }
+
           assert.strictEqual(res.statusCode, 400);
 
           const chunks = [];
